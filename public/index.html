@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trashbot System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="nature-bg"></div>
+    <div class="container">
+        <div id="loginForm" class="form-container">
+            <i class="fas fa-leaf leaf-icon"></i>
+            <h2>Welcome to Trashbot!</h2>
+            <form id="login">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="loginUsername" placeholder="Username" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="loginPassword" placeholder="Password" required>
+                </div>
+                <button type="submit"><i class="fas fa-sign-in-alt"></i> Login</button>
+            </form>
+            <p>Don't have an account? <a href="#" id="showRegister">Register</a></p>
+        </div>
+
+        <div id="registerForm" class="form-container hidden">
+            <i class="fas fa-seedling leaf-icon"></i>
+            <h2>Join Our Trashbot Community</h2>
+            <form id="register">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="fullName" placeholder="Full Name" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-graduation-cap"></i>
+                    <select id="grade" required>
+                        <option value="">Select Grade</option>
+                        <script>
+                            for(let i = 1; i <= 12; i++) {
+                                document.write(`<option value="${i}">Grade ${i}</option>`);
+                            }
+                            document.write(`<option value="1st-year">1st Year</option>`);
+                            document.write(`<option value="2nd-year">2nd Year</option>`);
+                            document.write(`<option value="3rd-year">3rd Year</option>`);
+                            document.write(`<option value="4th-year">4th Year</option>`);
+                        </script>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-id-card"></i>
+                    <input type="text" id="studentId" placeholder="Student ID" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="email" placeholder="Email" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="username" placeholder="Username" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" placeholder="Password" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+                </div>
+                <button type="submit"><i class="fas fa-user-plus"></i> Register</button>
+            </form>
+            <p>Already have an account? <a href="#" id="showLogin">Login</a></p>
+        </div>
+    </div>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html> 

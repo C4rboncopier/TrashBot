@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trashbot - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="nature-bg"></div>
+    <div class="container">
+        <div class="user-info">
+            <i class="fas fa-leaf leaf-icon"></i>
+            <h2 id="welcomeMessage">Welcome!</h2>
+            <div class="points-container">
+                <h3><i class="fas fa-seedling"></i> Your Points</h3>
+                <div class="points" id="userPoints">0</div>
+            </div>
+        </div>
+
+        <div class="milestone-container">
+            <h3><i class="fas fa-tree"></i> Current Milestone</h3>
+            <div class="milestone" id="currentMilestone">
+                <div class="milestone-progress">
+                    <div class="progress-bar" id="milestoneProgress"></div>
+                </div>
+                <p id="milestoneText">Loading...</p>
+            </div>
+        </div>
+
+        <div class="leaderboard-container">
+            <h3><i class="fas fa-crown"></i> Eco Champions</h3>
+            <div class="leaderboard" id="leaderboard">
+                <!-- Leaderboard entries will be inserted here -->
+            </div>
+        </div>
+
+        <button id="viewTickets" class="tickets-button">
+            <i class="fas fa-ticket-alt"></i> View Tickets
+        </button>
+
+        <button id="scanQR" class="scan-button">
+            <i class="fas fa-qrcode"></i> Scan QR Code
+        </button>
+
+        <button id="logout" class="logout-button">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+
+        <!-- QR Scanner Container -->
+        <div id="qr-reader" style="display: none;"></div>
+        <div id="scan-result" style="display: none;"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    
+    <!-- QR Code and Crypto Libraries -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    
+    <!-- App Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="qr-scanner.js"></script>
+    <script src="main.js"></script>
+</body>
+</html> 
