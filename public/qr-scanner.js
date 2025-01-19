@@ -9,43 +9,6 @@ function hexToBytes(hex) {
     return bytes;
 }
 
-async function checkIfCodeUsed(encryptedCode) {
-    const usedCodesRef = firebase.firestore().collection('usedCodes');
-    const snapshot = await usedCodesRef.doc(encryptedCode).get();
-    return snapshot.exists;
-}
-
-async function markCodeAsUsed(encryptedCode, data) {
-    const usedCodesRef = firebase.firestore().collection('usedCodes');
-    await usedCodesRef.doc(encryptedCode).set({
-        usedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        points: data.points,
-        usedBy: firebase.auth().currentUser.uid,
-        originalTimestamp: data.timestamp
-    });
-}
-
-async function updateUserPoints(points) {
-    const userId = firebase.auth().currentUser.uid;
-    const userRef = firebase.firestore().collection('users').doc(userId);
-
-    // Use a transaction to safely update points
-    await firebase.firestore().runTransaction(async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists) {
-            throw new Error("User document does not exist!");
-        }
-
-        const currentPoints = userDoc.data().points || 0;
-        const newPoints = currentPoints + points;
-
-        transaction.update(userRef, { 
-            points: newPoints,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-        });
-    });
-}
-
 async function decryptQRCode(encryptedHex) {
     try {
         console.log('Raw QR Code value:', encryptedHex);
@@ -54,52 +17,80 @@ async function decryptQRCode(encryptedHex) {
         encryptedHex = encryptedHex.replace(/[:\s]/g, '');
         console.log('Cleaned hex:', encryptedHex);
 
-        // Check if code has been used before
-        const isUsed = await checkIfCodeUsed(encryptedHex);
-        if (isUsed) {
-            throw new Error('This QR code has already been used');
-        }
+        // Start a Firestore transaction to handle both marking code as used and updating points atomically
+        await firebase.firestore().runTransaction(async (transaction) => {
+            // Check if code has been used before within the transaction
+            const usedCodesRef = firebase.firestore().collection('usedCodes').doc(encryptedHex);
+            const usedCodeDoc = await transaction.get(usedCodesRef);
+            
+            if (usedCodeDoc.exists) {
+                throw new Error('This QR code has already been used');
+            }
 
-        // Convert hex to bytes
-        const bytes = hexToBytes(encryptedHex);
-        
-        // Decrypt using XOR
-        let decrypted = '';
-        for (let i = 0; i < bytes.length; i++) {
-            decrypted += String.fromCharCode(bytes[i] ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
-        }
-        
-        console.log('Decrypted text:', decrypted);
+            // Decrypt and validate the code
+            const bytes = hexToBytes(encryptedHex);
+            let decrypted = '';
+            for (let i = 0; i < bytes.length; i++) {
+                decrypted += String.fromCharCode(bytes[i] ^ ENCRYPTION_KEY.charCodeAt(i % ENCRYPTION_KEY.length));
+            }
+            
+            console.log('Decrypted text:', decrypted);
 
-        if (!decrypted) {
-            throw new Error('Decryption resulted in empty text');
-        }
+            if (!decrypted) {
+                throw new Error('Decryption resulted in empty text');
+            }
 
-        // Split the timestamp from the data
-        const [data, timestamp] = decrypted.split('|');
+            // Split the timestamp from the data
+            const [data, timestamp] = decrypted.split('|');
 
-        // Extract points value
-        const pointsMatch = data.match(/Points:(\d+)/);
-        if (!pointsMatch) {
-            throw new Error('Invalid data format');
-        }
+            // Extract points value
+            const pointsMatch = data.match(/Points:(\d+)/);
+            if (!pointsMatch) {
+                throw new Error('Invalid data format');
+            }
 
-        const points = parseInt(pointsMatch[1]);
-        if (isNaN(points)) {
-            throw new Error('Invalid points value');
-        }
+            const points = parseInt(pointsMatch[1]);
+            if (isNaN(points)) {
+                throw new Error('Invalid points value');
+            }
 
-        // Mark code as used and update user points
-        await markCodeAsUsed(encryptedHex, { points, timestamp });
-        await updateUserPoints(points);
+            // Get current user
+            const userId = firebase.auth().currentUser.uid;
+            const userRef = firebase.firestore().collection('users').doc(userId);
+            const userDoc = await transaction.get(userRef);
+
+            if (!userDoc.exists) {
+                throw new Error("User document does not exist!");
+            }
+
+            // Mark code as used and update points in the same transaction
+            transaction.set(usedCodesRef, {
+                usedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                points: points,
+                usedBy: userId,
+                originalTimestamp: timestamp ? parseInt(timestamp) : Math.floor(Date.now() / 1000)
+            });
+
+            const currentPoints = userDoc.data().points || 0;
+            transaction.update(userRef, {
+                points: currentPoints + points,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            return {
+                data: data.trim(),
+                points: points,
+                timestamp: timestamp ? parseInt(timestamp) : Math.floor(Date.now() / 1000),
+                isValid: true,
+                rawText: decrypted
+            };
+        });
 
         return {
-            data: data.trim(),
-            points: points,
-            timestamp: timestamp ? parseInt(timestamp) : Math.floor(Date.now() / 1000),
             isValid: true,
-            rawText: decrypted
+            message: 'Points added successfully'
         };
+
     } catch (error) {
         console.error('Decryption failed:', error);
         return {
