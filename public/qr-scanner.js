@@ -17,14 +17,32 @@ async function decryptQRCode(encryptedHex) {
         encryptedHex = encryptedHex.replace(/[:\s]/g, '');
         console.log('Cleaned hex:', encryptedHex);
 
+        // Validate hex string format
+        if (!/^[0-9A-Fa-f]+$/.test(encryptedHex)) {
+            throw new Error('Invalid QR code format - must be hexadecimal');
+        }
+
         // Start a Firestore transaction to handle both marking code as used and updating points atomically
-        await firebase.firestore().runTransaction(async (transaction) => {
+        const result = await firebase.firestore().runTransaction(async (transaction) => {
             // Check if code has been used before within the transaction
             const usedCodesRef = firebase.firestore().collection('usedCodes').doc(encryptedHex);
             const usedCodeDoc = await transaction.get(usedCodesRef);
             
+            console.log('Checking if code exists:', encryptedHex);
+            console.log('Used code doc exists:', usedCodeDoc.exists);
+            
             if (usedCodeDoc.exists) {
-                throw new Error('This QR code has already been used');
+                const usedData = usedCodeDoc.data();
+                console.log('Used code data:', usedData);
+                const usedAt = usedData.usedAt.toDate();
+                const formattedDate = usedAt.toLocaleDateString() + ' ' + usedAt.toLocaleTimeString();
+                
+                // Get the user who used it
+                const userRef = firebase.firestore().collection('users').doc(usedData.usedBy);
+                const userDoc = await transaction.get(userRef);
+                const userName = userDoc.exists ? userDoc.data().fullName : 'Unknown User';
+                
+                throw new Error(`This QR code has already been used on ${formattedDate} by ${userName}`);
             }
 
             // Decrypt and validate the code
@@ -63,6 +81,9 @@ async function decryptQRCode(encryptedHex) {
                 throw new Error("User document does not exist!");
             }
 
+            // Generate a unique ticket ID
+            const ticketId = firebase.firestore().collection('dummy').doc().id;
+
             // Mark code as used and update points in the same transaction
             transaction.set(usedCodesRef, {
                 usedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -71,9 +92,19 @@ async function decryptQRCode(encryptedHex) {
                 originalTimestamp: timestamp ? parseInt(timestamp) : Math.floor(Date.now() / 1000)
             });
 
-            const currentPoints = userDoc.data().points || 0;
+            const userData = userDoc.data();
+            const currentPoints = userData.points || 0;
+            const tickets = userData.tickets || [];
+
+            // Add new ticket
+            tickets.push({
+                id: ticketId,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
             transaction.update(userRef, {
                 points: currentPoints + points,
+                tickets: tickets,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
             });
 
@@ -82,13 +113,16 @@ async function decryptQRCode(encryptedHex) {
                 points: points,
                 timestamp: timestamp ? parseInt(timestamp) : Math.floor(Date.now() / 1000),
                 isValid: true,
-                rawText: decrypted
+                rawText: decrypted,
+                ticketId: ticketId
             };
         });
 
+        // Return success response with the transaction result
         return {
             isValid: true,
-            message: 'Points added successfully'
+            message: 'Points and ticket added successfully',
+            ...result
         };
 
     } catch (error) {

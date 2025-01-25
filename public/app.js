@@ -48,8 +48,12 @@ async function initializeApp() {
                     localStorage.setItem('userId', userDoc.id);
                     localStorage.setItem('userData', JSON.stringify(userData));
                     
-                    // Redirect to main page
-                    window.location.href = '/main.html';
+                    // Redirect based on user type
+                    if (userData.username === 'admin') {
+                        window.location.href = '/admin.html';
+                    } else {
+                        window.location.href = '/main.html';
+                    }
                 }
             } catch (error) {
                 showError(error.message);

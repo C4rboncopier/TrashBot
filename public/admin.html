@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trashbot - Admin Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="nature-bg"></div>
+    <div class="container admin-container">
+        <div class="admin-header">
+            <h2><i class="fas fa-user-shield"></i> Admin Dashboard</h2>
+        </div>
+
+        <div class="admin-tabs">
+            <button class="tab-button active" data-tab="users">
+                <i class="fas fa-users"></i> Users
+            </button>
+            <button class="tab-button" data-tab="rewards">
+                <i class="fas fa-gift"></i> Rewards
+            </button>
+            <button class="tab-button" data-tab="wheel">
+                <i class="fas fa-dharmachakra"></i> Spin The Wheel
+            </button>
+        </div>
+
+        <div class="admin-content">
+            <div class="tab-content" id="users-tab">
+                <div class="users-list">
+                    <div class="users-header">
+                        <h3>All Users</h3>
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="userSearch" placeholder="Search users...">
+                        </div>
+                    </div>
+                    <div class="users-table-container">
+                        <table class="users-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Points</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <!-- Users will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content hidden" id="rewards-tab">
+                <div class="rewards-list">
+                    <div class="rewards-header">
+                        <h3>Available Rewards</h3>
+                        <button id="addRewardBtn" class="add-reward-btn">
+                            <i class="fas fa-plus"></i> Add Reward
+                        </button>
+                    </div>
+                    <div class="rewards-grid" id="rewardsGrid">
+                        <!-- Rewards will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content hidden" id="wheel-tab">
+                <div class="wheel-container">
+                    <div class="wheel-controls">
+                        <h3>Spin The Wheel</h3>
+                        <div class="wheel-stats">
+                            <p><i class="fas fa-ticket-alt"></i> Total Tickets: <span id="totalTickets">0</span></p>
+                            <p><i class="fas fa-sync-alt"></i> Current Draw: <span id="currentDraw">1</span>/15</p>
+                        </div>
+                        <button id="spinWheel" class="spin-button">
+                            <i class="fas fa-play"></i> Spin
+                        </button>
+                    </div>
+                    <div class="wheel-wrapper">
+                        <canvas id="wheelCanvas"></canvas>
+                    </div>
+                    <div id="winner-display" class="winner-display hidden">
+                        <h3>Winner!</h3>
+                        <div class="winner-info">
+                            <!-- Winner info will be displayed here -->
+                        </div>
+                        <button id="closeWinner" class="close-button">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-footer">
+            <button id="logout" class="logout-button">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+
+        <!-- User Details Modal -->
+        <div id="userDetailsModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>User Details</h3>
+                    <button class="close-modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!-- User details will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Reward Modal -->
+        <div id="addRewardModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add New Reward</h3>
+                    <button class="close-modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="addRewardForm">
+                        <div class="form-group">
+                            <label for="rewardName">Reward Name</label>
+                            <input type="text" id="rewardName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="rewardType">Reward Type</label>
+                            <select id="rewardType" required>
+                                <option value="3-star">3-star</option>
+                                <option value="4-star">4-star</option>
+                                <option value="5-star">5-star</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="submit-btn">
+                            <i class="fas fa-plus"></i> Add Reward
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    
+    <!-- App Scripts -->
+    <script src="firebase-config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html> 

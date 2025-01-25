@@ -19,6 +19,10 @@
                 <h3><i class="fas fa-seedling"></i> Your Points</h3>
                 <div class="points" id="userPoints">0</div>
             </div>
+            <button id="notificationsBtn" class="notifications-button">
+                <i class="fas fa-bell"></i>
+                <span class="notification-badge" id="notificationBadge">0</span>
+            </button>
         </div>
 
         <div class="milestone-container">
@@ -53,6 +57,48 @@
         <!-- QR Scanner Container -->
         <div id="qr-reader" style="display: none;"></div>
         <div id="scan-result" style="display: none;"></div>
+    </div>
+
+    <!-- Notifications Modal -->
+    <div id="notificationsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-bell"></i> Notifications</h3>
+                <div class="modal-actions">
+                    <button id="clearInbox" class="clear-inbox-btn">
+                        <i class="fas fa-trash-alt"></i> Clear Inbox
+                    </button>
+                    <button class="close-modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="notificationsList" class="notifications-list">
+                    <!-- Notifications will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear Inbox Confirmation Modal -->
+    <div id="clearInboxModal" class="modal">
+        <div class="modal-content confirmation-modal">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Confirm Clear Inbox</h3>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to clear all notifications? This action cannot be undone.</p>
+                <div class="confirmation-actions">
+                    <button id="confirmClear" class="confirm-btn">
+                        <i class="fas fa-check"></i> Yes, Clear All
+                    </button>
+                    <button id="cancelClear" class="cancel-btn">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Firebase SDK -->

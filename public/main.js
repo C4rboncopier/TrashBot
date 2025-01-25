@@ -13,6 +13,10 @@ const POINTS_PER_TICKET = 10;
 // QR Scanner instance
 let html5QrcodeScanner = null;
 
+// Notifications functionality
+let notifications = [];
+let unreadCount = 0;
+
 // Wait for Firebase to initialize before checking auth state
 async function initializeApp() {
     try {
@@ -20,17 +24,27 @@ async function initializeApp() {
         await window.firebaseInitialized;
 
         // Now we can safely use Firebase services
-        firebase.auth().onAuthStateChanged((user) => {
+        firebase.auth().onAuthStateChanged(async (user) => {
             if (!user) {
                 window.location.href = '/index.html';
+                return;
+            }
+
+            // Check if user is admin
+            const userRef = firebase.firestore().collection('users').doc(user.uid);
+            const userDoc = await userRef.get();
+            
+            if (userDoc.exists && userDoc.data().username === 'admin') {
+                window.location.href = '/admin.html';
                 return;
             }
             
             loadUserData();
             loadLeaderboard();
+            initializeNotifications();
+            setupNotificationListeners();
 
             // Set up real-time listener for points updates
-            const userRef = firebase.firestore().collection('users').doc(user.uid);
             userRef.onSnapshot((doc) => {
                 if (doc.exists) {
                     const userData = doc.data();
@@ -85,20 +99,10 @@ async function updateTickets(points) {
         const doc = await userRef.get();
         if (doc.exists) {
             const userData = doc.data();
-            const currentTickets = userData.tickets || [];
-            const ticketsEarned = Math.floor(points / POINTS_PER_TICKET);
-            
-            // Calculate how many new tickets to add
-            const newTicketsNeeded = ticketsEarned - currentTickets.length;
-            
-            if (newTicketsNeeded > 0) {
-                const newTickets = Array.from({ length: newTicketsNeeded }, () => ({
-                    id: Date.now() + Math.random().toString(36).substr(2, 9),
-                    dateEarned: new Date().toISOString()
-                }));
-                
+            // Initialize tickets array if it doesn't exist
+            if (!userData.tickets) {
                 await userRef.update({
-                    tickets: [...currentTickets, ...newTickets]
+                    tickets: []
                 });
             }
         }
@@ -128,6 +132,7 @@ async function displayTickets() {
                         <span class="count">${tickets.length}</span>
                         <span class="label">Available Tickets</span>
                     </div>
+                    <p class="ticket-info">Earn tickets by recycling trash!</p>
                     <button onclick="closeTicketDisplay()">Close</button>
                 </div>
             `;
@@ -147,10 +152,9 @@ window.closeTicketDisplay = () => {
     }
 };
 
-// Update points display and trigger ticket update
+// Update points display
 function updatePointsDisplay(points) {
     document.getElementById('userPoints').textContent = points;
-    updateTickets(points);
 }
 
 function updateMilestoneProgress(points) {
@@ -234,6 +238,18 @@ function loadLeaderboard() {
     });
 }
 
+// Function to stop and hide QR scanner
+function stopAndHideScanner() {
+    const qrReader = document.getElementById('qr-reader');
+    if (qrReader) {
+        qrReader.style.display = 'none';
+        if (html5QrcodeScanner) {
+            html5QrcodeScanner.clear();
+            html5QrcodeScanner = null;  // Reset the scanner instance
+        }
+    }
+}
+
 // Scan QR Code button
 document.getElementById('scanQR').addEventListener('click', () => {
     if (!firebase.auth().currentUser) {
@@ -244,68 +260,19 @@ document.getElementById('scanQR').addEventListener('click', () => {
 
     const qrReader = document.getElementById('qr-reader');
     if (qrReader) {
-        qrReader.style.display = 'flex';
-        if (!html5QrcodeScanner) {
-            html5QrcodeScanner = new Html5QrcodeScanner(
-                "qr-reader",
-                {
-                    fps: 10,
-                    qrbox: { width: 250, height: 250 },
-                    aspectRatio: 1.0,
-                    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
-                    experimentalFeatures: {
-                        useBarCodeDetectorIfSupported: true
-                    },
-                    rememberLastUsedCamera: true,
-                    showTorchButtonIfSupported: true,
-                    defaultZoomValueIfSupported: 2,
-                    showZoomSliderIfSupported: true,
-                    // Hide the initial permission button
-                    hideInitialButtons: true,
-                    // Customize button names
-                    buttonNames: {
-                        fileSelectionButton: 'Upload QR Image',
-                        closeButton: 'Close Scanner'
-                    }
-                }
-            );
-            
-            html5QrcodeScanner.render(async (decodedText) => {
-                try {
+        if (qrReader.style.display === 'none') {
+            qrReader.style.display = 'flex';
+            if (!html5QrcodeScanner) {
+                html5QrcodeScanner = new Html5QrcodeScanner('qr-reader', { fps: 10, qrbox: 250 });
+                html5QrcodeScanner.render(async (decodedText) => {
                     const result = await decryptQRCode(decodedText);
-                    const resultDiv = document.getElementById('scan-result');
-                    resultDiv.style.display = 'flex';
-                    resultDiv.innerHTML = `
-                        <div class="result-box">
-                            <h3>${result.isValid ? 'Success!' : 'Error'}</h3>
-                            ${result.isValid 
-                                ? `<p><i class="fas fa-coins"></i> Points: ${result.points}</p>`
-                                : `<p class="error"> ${result.error}</p>`
-                            }
-                            <button onclick="closeScanResult()"><i class="fas fa-times"></i> Close</button>
-                        </div>
-                    `;
-                    
-                    if (result.isValid) {
-                        html5QrcodeScanner.clear();
-                        html5QrcodeScanner = null;
-                        qrReader.style.display = 'none';
-                    }
-                } catch (error) {
-                    console.error('Error processing QR code:', error);
-                }
-            });
-
-            // Automatically start the camera after a short delay
-            setTimeout(() => {
-                const cameraPermissionButton = document.getElementById('qr-reader__camera_permission_button');
-                if (cameraPermissionButton) {
-                    cameraPermissionButton.click();
-                }
-            }, 100);
+                    stopAndHideScanner();
+                    displayScanResult(result);
+                });
+            }
+        } else {
+            stopAndHideScanner();
         }
-    } else {
-        console.error('QR reader element not found');
     }
 });
 
@@ -326,18 +293,210 @@ window.closeScanResult = () => {
 };
 
 // Logout functionality
-document.getElementById('logout').addEventListener('click', async () => {
-    try {
-        await firebase.auth().signOut();
-        localStorage.clear();
-        window.location.href = '/index.html';
-    } catch (error) {
-        console.error('Error signing out:', error);
-    }
+document.getElementById('logout').addEventListener('click', () => {
+    stopAndHideScanner();
+    firebase.auth().signOut();
 });
 
-// Add event listener for tickets button
-document.getElementById('viewTickets').addEventListener('click', displayTickets);
+// Add event listeners to other buttons to hide scanner
+document.getElementById('viewTickets').addEventListener('click', () => {
+    stopAndHideScanner();
+    displayTickets();
+});
+
+document.getElementById('notificationsBtn').addEventListener('click', () => {
+    stopAndHideScanner();
+});
+
+// Initialize notifications
+async function initializeNotifications() {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+
+    const notificationsRef = firebase.firestore()
+        .collection('users')
+        .doc(user.uid)
+        .collection('notifications');
+
+    // Listen for real-time updates
+    notificationsRef.orderBy('timestamp', 'desc')
+        .onSnapshot((snapshot) => {
+            notifications = [];
+            unreadCount = 0;
+
+            snapshot.forEach((doc) => {
+                const notification = {
+                    id: doc.id,
+                    ...doc.data()
+                };
+                notifications.push(notification);
+                if (!notification.read) {
+                    unreadCount++;
+                }
+            });
+
+            updateNotificationBadge();
+            if (document.getElementById('notificationsModal').classList.contains('show')) {
+                displayNotifications();
+            }
+        });
+}
+
+// Update notification badge
+function updateNotificationBadge() {
+    const badge = document.getElementById('notificationBadge');
+    badge.textContent = unreadCount;
+    badge.style.display = unreadCount > 0 ? 'flex' : 'none';
+}
+
+// Display notifications in modal
+function displayNotifications() {
+    const notificationsList = document.getElementById('notificationsList');
+    notificationsList.innerHTML = '';
+
+    if (notifications.length === 0) {
+        notificationsList.innerHTML = '<div class="notification-item">No notifications yet</div>';
+        return;
+    }
+
+    notifications.forEach(notification => {
+        const notificationElement = document.createElement('div');
+        notificationElement.className = `notification-item${notification.read ? '' : ' unread'}`;
+        
+        const timestamp = notification.timestamp?.toDate() || new Date();
+        const timeAgo = formatTimeAgo(timestamp);
+
+        notificationElement.innerHTML = `
+            <div class="notification-header">
+                <div class="notification-title">${notification.title}</div>
+                <div class="notification-time">${timeAgo}</div>
+            </div>
+            <div class="notification-message">${notification.message}</div>
+        `;
+
+        notificationsList.appendChild(notificationElement);
+
+        // Mark as read when clicked
+        if (!notification.read) {
+            notificationElement.addEventListener('click', () => markAsRead(notification.id));
+        }
+    });
+}
+
+// Mark notification as read
+async function markAsRead(notificationId) {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+
+    try {
+        await firebase.firestore()
+            .collection('users')
+            .doc(user.uid)
+            .collection('notifications')
+            .doc(notificationId)
+            .update({
+                read: true
+            });
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+    }
+}
+
+// Format time ago
+function formatTimeAgo(date) {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    return date.toLocaleDateString();
+}
+
+// Clear all notifications
+async function clearInbox() {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+
+    try {
+        const notificationsRef = firebase.firestore()
+            .collection('users')
+            .doc(user.uid)
+            .collection('notifications');
+
+        // Get all notifications
+        const snapshot = await notificationsRef.get();
+        
+        // Delete each notification
+        const batch = firebase.firestore().batch();
+        snapshot.forEach(doc => {
+            batch.delete(notificationsRef.doc(doc.id));
+        });
+        
+        await batch.commit();
+        
+        // Update UI
+        notifications = [];
+        unreadCount = 0;
+        updateNotificationBadge();
+        displayNotifications();
+    } catch (error) {
+        console.error('Error clearing inbox:', error);
+    }
+}
+
+// Setup notification event listeners
+function setupNotificationListeners() {
+    const notificationsBtn = document.getElementById('notificationsBtn');
+    const notificationsModal = document.getElementById('notificationsModal');
+    const clearInboxModal = document.getElementById('clearInboxModal');
+    const closeModal = notificationsModal.querySelector('.close-modal');
+    const clearInboxBtn = document.getElementById('clearInbox');
+    const confirmClearBtn = document.getElementById('confirmClear');
+    const cancelClearBtn = document.getElementById('cancelClear');
+
+    notificationsBtn.addEventListener('click', () => {
+        notificationsModal.classList.add('show');
+        displayNotifications();
+    });
+
+    closeModal.addEventListener('click', () => {
+        notificationsModal.classList.remove('show');
+    });
+
+    notificationsModal.addEventListener('click', (e) => {
+        if (e.target === notificationsModal) {
+            notificationsModal.classList.remove('show');
+        }
+    });
+
+    // Clear inbox button
+    clearInboxBtn.addEventListener('click', () => {
+        if (notifications.length === 0) return;
+        clearInboxModal.classList.add('show');
+    });
+
+    // Confirm clear button
+    confirmClearBtn.addEventListener('click', async () => {
+        confirmClearBtn.disabled = true;
+        await clearInbox();
+        confirmClearBtn.disabled = false;
+        clearInboxModal.classList.remove('show');
+    });
+
+    // Cancel clear button
+    cancelClearBtn.addEventListener('click', () => {
+        clearInboxModal.classList.remove('show');
+    });
+
+    // Close confirmation modal when clicking outside
+    clearInboxModal.addEventListener('click', (e) => {
+        if (e.target === clearInboxModal) {
+            clearInboxModal.classList.remove('show');
+        }
+    });
+}
 
 // Start the application
 initializeApp(); 
