@@ -10,6 +10,10 @@
 </head>
 <body>
     <div class="nature-bg"></div>
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Logging in...</div>
+    </div>
     <div class="container">
         <div id="loginForm" class="form-container">
             <i class="fas fa-leaf leaf-icon"></i>
@@ -53,7 +57,7 @@
                 </div>
                 <div class="input-group">
                     <i class="fas fa-id-card"></i>
-                    <input type="text" id="studentId" placeholder="Student ID" required>
+                    <input type="number" id="studentId" placeholder="Student ID" required>
                 </div>
                 <div class="input-group">
                     <i class="fas fa-envelope"></i>

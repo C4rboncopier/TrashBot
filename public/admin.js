@@ -32,41 +32,86 @@ async function initializeApp() {
     }
 }
 
+// Pagination state
+let currentPage = 1;
+let usersPerPage = 10;
+let allUsers = [];
+
 // Load all users
 async function loadUsers() {
     try {
         const usersRef = firebase.firestore().collection('users');
         const snapshot = await usersRef.get();
-        const tableBody = document.getElementById('usersTableBody');
-        tableBody.innerHTML = '';
-
+        
+        // Store all non-admin users
+        allUsers = [];
         snapshot.forEach(doc => {
             const userData = doc.data();
-            if (userData.username !== 'admin') { // Don't show admin in the list
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${userData.fullName}</td>
-                    <td>${userData.points || 0}</td>
-                    <td>
-                        <button class="view-details-btn" data-userid="${doc.id}">
-                            <i class="fas fa-eye"></i> View Details
-                        </button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
+            if (userData.username !== 'admin') {
+                allUsers.push({
+                    id: doc.id,
+                    ...userData
+                });
             }
         });
 
-        // Add event listeners to view details buttons
-        document.querySelectorAll('.view-details-btn').forEach(button => {
-            button.addEventListener('click', () => showUserDetails(button.dataset.userid));
-        });
+        // Sort users alphabetically by full name
+        allUsers.sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+        // Update pagination controls
+        updatePaginationControls();
+        
+        // Display current page
+        displayCurrentPage();
 
         // Update total tickets count
         updateTotalTickets();
     } catch (error) {
         console.error('Error loading users:', error);
     }
+}
+
+// Display current page of users
+function displayCurrentPage() {
+    const tableBody = document.getElementById('usersTableBody');
+    tableBody.innerHTML = '';
+
+    const startIndex = (currentPage - 1) * usersPerPage;
+    const endIndex = startIndex + usersPerPage;
+    const usersToDisplay = allUsers.slice(startIndex, endIndex);
+
+    usersToDisplay.forEach(userData => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${userData.fullName}</td>
+            <td>${userData.points || 0}</td>
+            <td>
+                <button class="view-details-btn" data-userid="${userData.id}">
+                    <i class="fas fa-eye"></i> View Details
+                </button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    // Add event listeners to view details buttons
+    document.querySelectorAll('.view-details-btn').forEach(button => {
+        button.addEventListener('click', () => showUserDetails(button.dataset.userid));
+    });
+}
+
+// Update pagination controls
+function updatePaginationControls() {
+    const totalPages = Math.ceil(allUsers.length / usersPerPage);
+    
+    document.getElementById('currentPage').textContent = currentPage;
+    document.getElementById('totalPages').textContent = totalPages;
+    
+    const prevButton = document.getElementById('prevPage');
+    const nextButton = document.getElementById('nextPage');
+    
+    prevButton.disabled = currentPage === 1;
+    nextButton.disabled = currentPage === totalPages;
 }
 
 // Show user details in modal
@@ -131,15 +176,38 @@ function setupEventListeners() {
         });
     });
 
-    // User search
+    // User search with pagination reset
     document.getElementById('userSearch').addEventListener('input', (e) => {
         const searchTerm = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('#usersTableBody tr');
         
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
-        });
+        if (searchTerm === '') {
+            currentPage = 1;
+            displayCurrentPage();
+            updatePaginationControls();
+        } else {
+            const tableBody = document.getElementById('usersTableBody');
+            tableBody.innerHTML = '';
+            
+            // Filter and display all matching users without pagination
+            allUsers.forEach(userData => {
+                if (userData.fullName.toLowerCase().includes(searchTerm)) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${userData.fullName}</td>
+                        <td>${userData.points || 0}</td>
+                        <td>
+                            <button class="view-details-btn" data-userid="${userData.id}">
+                                <i class="fas fa-eye"></i> View Details
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                }
+            });
+
+            // Hide pagination controls during search
+            document.querySelector('.pagination-controls').style.display = 'none';
+        }
     });
 
     // Modal close button
@@ -165,6 +233,24 @@ function setupEventListeners() {
     // Close winner display
     document.getElementById('closeWinner').addEventListener('click', () => {
         document.getElementById('winner-display').classList.add('hidden');
+    });
+
+    // Pagination controls
+    document.getElementById('prevPage').addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            displayCurrentPage();
+            updatePaginationControls();
+        }
+    });
+
+    document.getElementById('nextPage').addEventListener('click', () => {
+        const totalPages = Math.ceil(allUsers.length / usersPerPage);
+        if (currentPage < totalPages) {
+            currentPage++;
+            displayCurrentPage();
+            updatePaginationControls();
+        }
     });
 }
 

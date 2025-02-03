@@ -99,7 +99,7 @@ async function decryptQRCode(encryptedHex) {
             // Add new ticket
             tickets.push({
                 id: ticketId,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                createdAt: new Date().toISOString()
             });
 
             transaction.update(userRef, {

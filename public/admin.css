@@ -187,7 +187,7 @@
     border-radius: 6px;
     cursor: pointer;
     font-family: 'Poppins', sans-serif;
-    font-size: 14px;
+    font-size: 10px;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -677,4 +677,94 @@
 .wheel-stats span {
     font-weight: 600;
     color: var(--primary-green);
+}
+
+/* Pagination Controls */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.pagination-btn {
+    min-width: 120px;
+    padding: 10px 20px;
+    background: var(--primary-green);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(46, 204, 113, 0.2);
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: var(--dark-green);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(46, 204, 113, 0.3);
+}
+
+.pagination-btn:disabled {
+    background: #e0e0e0;
+    color: #999;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.pagination-btn i {
+    font-size: 12px;
+}
+
+#pageInfo {
+    font-family: 'Poppins', sans-serif;
+    color: var(--earth-brown);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 0 10px;
+    min-width: 120px;
+    text-align: center;
+}
+
+#currentPage, #totalPages {
+    color: var(--primary-green);
+    font-weight: 600;
+}
+
+/* Mobile Responsive Adjustments for Pagination */
+@media (max-width: 768px) {
+    .pagination-controls {
+        flex-wrap: wrap;
+        gap: 10px;
+        width: 100%;
+        padding: 10px;
+    }
+    
+    .pagination-btn {
+        min-width: 100px;
+        padding: 8px 15px;
+        font-size: 13px;
+    }
+
+    #pageInfo {
+        order: -1;
+        width: 100%;
+        margin-bottom: 5px;
+    }
 } 

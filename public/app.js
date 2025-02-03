@@ -26,37 +26,67 @@ async function initializeApp() {
             e.preventDefault();
             const username = document.getElementById('loginUsername').value;
             const password = document.getElementById('loginPassword').value;
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingText = loadingOverlay.querySelector('.loading-text');
 
             try {
+                // Disable submit button and show loading overlay
+                submitButton.disabled = true;
+                loadingText.textContent = 'Logging in...';
+                loadingOverlay.classList.remove('hidden');
+
                 // Query Firestore to find user with matching username
                 const usersRef = firebase.firestore().collection('users');
                 const snapshot = await usersRef.where('username', '==', username).get();
 
                 if (snapshot.empty) {
-                    showError('User not found');
+                    showError('Username not found. Please check your username and try again.');
                     return;
                 }
 
                 const userDoc = snapshot.docs[0];
                 const userData = userDoc.data();
 
-                // Sign in with email and password
-                const result = await firebase.auth().signInWithEmailAndPassword(userData.email, password);
-                
-                if (result.user) {
-                    // Store user data in localStorage
-                    localStorage.setItem('userId', userDoc.id);
-                    localStorage.setItem('userData', JSON.stringify(userData));
+                try {
+                    // Sign in with email and password
+                    const result = await firebase.auth().signInWithEmailAndPassword(userData.email, password);
                     
-                    // Redirect based on user type
-                    if (userData.username === 'admin') {
-                        window.location.href = '/admin.html';
-                    } else {
-                        window.location.href = '/main.html';
+                    if (result.user) {
+                        // Store user data in localStorage
+                        localStorage.setItem('userId', userDoc.id);
+                        localStorage.setItem('userData', JSON.stringify(userData));
+                        
+                        // Redirect based on user type
+                        if (userData.username === 'admin') {
+                            window.location.href = '/admin.html';
+                        } else {
+                            window.location.href = '/main.html';
+                        }
+                    }
+                } catch (authError) {
+                    // Handle specific Firebase auth errors
+                    switch (authError.code) {
+                        case 'auth/wrong-password':
+                            showError('Incorrect password. Please try again.');
+                            break;
+                        case 'auth/too-many-requests':
+                            showError('Too many failed login attempts. Please try again later.');
+                            break;
+                        case 'auth/user-disabled':
+                            showError('This account has been disabled. Please contact support.');
+                            break;
+                        default:
+                            showError('Login failed. Please check your credentials and try again.');
                     }
                 }
             } catch (error) {
-                showError(error.message);
+                showError('An error occurred. Please try again later.');
+                console.error('Login error:', error);
+            } finally {
+                // Re-enable submit button and hide loading overlay
+                submitButton.disabled = false;
+                loadingOverlay.classList.add('hidden');
             }
         });
 
@@ -69,6 +99,9 @@ async function initializeApp() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
+            const submitButton = e.target.querySelector('button[type="submit"]');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingText = loadingOverlay.querySelector('.loading-text');
 
             if (password !== confirmPassword) {
                 showError('Passwords do not match');
@@ -76,6 +109,11 @@ async function initializeApp() {
             }
 
             try {
+                // Disable submit button and show loading overlay
+                submitButton.disabled = true;
+                loadingText.textContent = 'Registering...';
+                loadingOverlay.classList.remove('hidden');
+                
                 // Check if username already exists
                 const usernameCheck = await firebase.firestore().collection('users')
                     .where('username', '==', username).get();
@@ -109,6 +147,10 @@ async function initializeApp() {
                 loginForm.classList.remove('hidden');
             } catch (error) {
                 showError(error.message);
+            } finally {
+                // Re-enable submit button and hide loading overlay
+                submitButton.disabled = false;
+                loadingOverlay.classList.add('hidden');
             }
         });
     } catch (error) {

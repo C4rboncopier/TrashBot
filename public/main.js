@@ -206,27 +206,48 @@ function loadLeaderboard() {
     // Set up real-time listener for leaderboard updates
     const unsubscribe = firebase.firestore().collection('users')
         .orderBy('points', 'desc')
-        .limit(10)
+        .limit(20) // Increased limit to account for potential ties
         .onSnapshot((snapshot) => {
             leaderboardElement.innerHTML = ''; // Clear existing entries
             
-            snapshot.docs.forEach((doc, index) => {
+            let lastPoints = -1;  // Track last points for tie detection
+            let currentRank = 0;  // Track current rank
+            let displayedCount = 0;  // Track number of displayed entries
+            
+            snapshot.docs.forEach((doc) => {
                 const userData = doc.data();
-                const entry = document.createElement('div');
-                entry.className = 'leaderboard-entry';
                 
-                const rankClass = index < 3 ? `rank-${index + 1}` : '';
+                // Skip admin account
+                if (userData.username === 'admin') {
+                    return;
+                }
                 
-                entry.innerHTML = `
-                    <div class="rank ${rankClass}">#${index + 1}</div>
-                    <div class="user-details">
-                        <div class="user-name">${userData.fullName}</div>
-                        <div class="user-grade">Grade ${userData.grade}</div>
-                    </div>
-                    <div class="user-points">${userData.points} pts</div>
-                `;
+                // If points are different from last entry, increment rank
+                if (userData.points !== lastPoints) {
+                    currentRank = displayedCount + 1;
+                }
                 
-                leaderboardElement.appendChild(entry);
+                // Only show if within top 5 ranks
+                if (currentRank <= 5) {
+                    const entry = document.createElement('div');
+                    entry.className = 'leaderboard-entry';
+                    
+                    const rankClass = currentRank <= 3 ? `rank-${currentRank}` : '';
+                    
+                    entry.innerHTML = `
+                        <div class="rank ${rankClass}">#${currentRank}</div>
+                        <div class="user-details">
+                            <div class="user-name">${userData.fullName}</div>
+                            <div class="user-grade">Grade ${userData.grade}</div>
+                        </div>
+                        <div class="user-points">${userData.points} pts</div>
+                    `;
+                    
+                    leaderboardElement.appendChild(entry);
+                    displayedCount++;
+                }
+                
+                lastPoints = userData.points;
             });
         }, (error) => {
             console.error('Error loading leaderboard:', error);
@@ -250,6 +271,27 @@ function stopAndHideScanner() {
     }
 }
 
+// Function to display scan result
+function displayScanResult(result) {
+    const resultDiv = document.getElementById('scan-result');
+    resultDiv.style.display = 'flex';
+    
+    resultDiv.innerHTML = `
+        <div class="result-box">
+            <h3>${result.isValid ? 'Success!' : 'Error'}</h3>
+            ${result.isValid 
+                ? `
+                    <p><i class="fas fa-coins"></i> Points: ${result.points}</p>
+                    <p><i class="fas fa-ticket-alt"></i> New ticket added!</p>
+                    <p class="ticket-info">Use your ticket for a chance to win prizes in the raffle!</p>
+                `
+                : `<p class="error">${result.error}</p>`
+            }
+            <button onclick="closeScanResult()"><i class="fas fa-times"></i> Close</button>
+        </div>
+    `;
+}
+
 // Scan QR Code button
 document.getElementById('scanQR').addEventListener('click', () => {
     if (!firebase.auth().currentUser) {
@@ -260,14 +302,38 @@ document.getElementById('scanQR').addEventListener('click', () => {
 
     const qrReader = document.getElementById('qr-reader');
     if (qrReader) {
-        if (qrReader.style.display === 'none') {
+        if (qrReader.style.display === 'none' || !qrReader.style.display) {
             qrReader.style.display = 'flex';
             if (!html5QrcodeScanner) {
-                html5QrcodeScanner = new Html5QrcodeScanner('qr-reader', { fps: 10, qrbox: 250 });
+                html5QrcodeScanner = new Html5QrcodeScanner(
+                    "qr-reader",
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 },
+                        aspectRatio: 1.0,
+                        formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ],
+                        experimentalFeatures: {
+                            useBarCodeDetectorIfSupported: true
+                        },
+                        rememberLastUsedCamera: true,
+                        showTorchButtonIfSupported: true,
+                        defaultZoomValueIfSupported: 2,
+                        showZoomSliderIfSupported: true
+                    }
+                );
+                
                 html5QrcodeScanner.render(async (decodedText) => {
-                    const result = await decryptQRCode(decodedText);
-                    stopAndHideScanner();
-                    displayScanResult(result);
+                    try {
+                        // Stop scanning immediately to prevent multiple scans
+                        await html5QrcodeScanner.pause();
+                        
+                        const result = await decryptQRCode(decodedText);
+                        stopAndHideScanner();
+                        displayScanResult(result);
+                    } catch (error) {
+                        console.error('Error processing QR code:', error);
+                        html5QrcodeScanner.resume(); // Resume scanning if there was an error
+                    }
                 });
             }
         } else {
@@ -279,16 +345,8 @@ document.getElementById('scanQR').addEventListener('click', () => {
 // Function to close scan result
 window.closeScanResult = () => {
     const resultDiv = document.getElementById('scan-result');
-    resultDiv.style.display = 'none';
-    
-    if (html5QrcodeScanner) {
-        html5QrcodeScanner.clear();
-        html5QrcodeScanner = null;
-    }
-    
-    const qrReader = document.getElementById('qr-reader');
-    if (qrReader) {
-        qrReader.style.display = 'none';
+    if (resultDiv) {
+        resultDiv.style.display = 'none';
     }
 };
 
