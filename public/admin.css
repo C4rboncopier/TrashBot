@@ -767,4 +767,53 @@
         width: 100%;
         margin-bottom: 5px;
     }
+}
+
+/* Error Popup Styles */
+.error-popup {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #fff;
+    border-left: 4px solid #e74c3c;
+    padding: 16px 24px;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transform: translateX(120%);
+    transition: transform 0.3s ease-in-out;
+    max-width: 400px;
+}
+
+.error-popup.show {
+    transform: translateX(0);
+}
+
+.error-popup i {
+    color: #e74c3c;
+    font-size: 20px;
+}
+
+.error-popup .error-message {
+    color: #2c3e50;
+    font-size: 14px;
+    margin: 0;
+    flex-grow: 1;
+}
+
+.error-popup .close-error {
+    background: none;
+    border: none;
+    color: #95a5a6;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 16px;
+    transition: color 0.2s ease;
+}
+
+.error-popup .close-error:hover {
+    color: #7f8c8d;
 } 

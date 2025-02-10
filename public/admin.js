@@ -414,7 +414,34 @@ function drawWheel(ctx) {
     ctx.restore();
 }
 
+// Show error popup function
+function showErrorPopup(message) {
+    const popup = document.getElementById('errorPopup');
+    const messageEl = popup.querySelector('.error-message');
+    messageEl.textContent = message;
+    
+    popup.classList.add('show');
+    
+    // Auto hide after 5 seconds
+    setTimeout(() => {
+        popup.classList.remove('show');
+    }, 5000);
+    
+    // Close button functionality
+    const closeBtn = popup.querySelector('.close-error');
+    closeBtn.onclick = () => popup.classList.remove('show');
+}
+
 async function spinTheWheel() {
+    // Check if there are any rewards first
+    const rewardsRef = firebase.firestore().collection('rewards');
+    const rewardsSnapshot = await rewardsRef.get();
+    
+    if (rewardsSnapshot.empty) {
+        showErrorPopup('Cannot spin the wheel. No rewards have been created yet. Please create some rewards first.');
+        return;
+    }
+
     if (wheel.isSpinning || wheel.segments.length === 0) return;
 
     wheel.isSpinning = true;

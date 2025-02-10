@@ -34,13 +34,32 @@ async function decryptQRCode(encryptedHex) {
             if (usedCodeDoc.exists) {
                 const usedData = usedCodeDoc.data();
                 console.log('Used code data:', usedData);
-                const usedAt = usedData.usedAt.toDate();
-                const formattedDate = usedAt.toLocaleDateString() + ' ' + usedAt.toLocaleTimeString();
+                
+                // Check if usedAt exists and is valid
+                if (!usedData.usedAt) {
+                    throw new Error('Invalid QR code data - missing timestamp');
+                }
+                
+                let formattedDate;
+                try {
+                    const usedAt = usedData.usedAt.toDate();
+                    formattedDate = usedAt.toLocaleDateString() + ' ' + usedAt.toLocaleTimeString();
+                } catch (error) {
+                    console.error('Error formatting date:', error);
+                    formattedDate = 'an unknown time';
+                }
                 
                 // Get the user who used it
-                const userRef = firebase.firestore().collection('users').doc(usedData.usedBy);
-                const userDoc = await transaction.get(userRef);
-                const userName = userDoc.exists ? userDoc.data().fullName : 'Unknown User';
+                let userName = 'Unknown User';
+                try {
+                    if (usedData.usedBy) {
+                        const userRef = firebase.firestore().collection('users').doc(usedData.usedBy);
+                        const userDoc = await transaction.get(userRef);
+                        userName = userDoc.exists ? userDoc.data().fullName : 'Unknown User';
+                    }
+                } catch (error) {
+                    console.error('Error getting user details:', error);
+                }
                 
                 throw new Error(`This QR code has already been used on ${formattedDate} by ${userName}`);
             }
@@ -96,11 +115,16 @@ async function decryptQRCode(encryptedHex) {
             const currentPoints = userData.points || 0;
             const tickets = userData.tickets || [];
 
-            // Add new ticket
-            tickets.push({
-                id: ticketId,
-                createdAt: new Date().toISOString()
-            });
+            // Calculate number of tickets (1 ticket per 10 points, discarding excess)
+            const numberOfTickets = Math.floor(points / 10);
+            
+            // Add new tickets
+            for (let i = 0; i < numberOfTickets; i++) {
+                tickets.push({
+                    id: firebase.firestore().collection('dummy').doc().id,
+                    createdAt: new Date().toISOString()
+                });
+            }
 
             transaction.update(userRef, {
                 points: currentPoints + points,
